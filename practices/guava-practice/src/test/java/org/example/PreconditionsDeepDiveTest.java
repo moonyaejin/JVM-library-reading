@@ -135,57 +135,66 @@ class PreconditionsDeepDiveTest {
     }
 
     @Test
-    void measureAutoBoxingOverhead() {
+    void measureAutoBoxingOverheadImproved() {
+        int warmupIterations = 1_000_000;
         int iterations = 10_000_000;
 
-        // 1. Primitive 타입 오버로딩 (boxing 없음)
+        // Warm-up (JIT 컴파일 유도)
+        for (int i = 0; i < warmupIterations; i++) {
+            checkArgument(true, "Value: %s", i);
+            checkArgument(true, "Value: %s", Integer.valueOf(i));
+        }
+
+        // 실제 측정
         long start1 = System.nanoTime();
         for (int i = 0; i < iterations; i++) {
             checkArgument(true, "Value: %s", i);
         }
         long nativeTime = System.nanoTime() - start1;
 
-        // 2. 강제로 Integer 사용 (boxing 발생)
         long start2 = System.nanoTime();
         for (int i = 0; i < iterations; i++) {
             checkArgument(true, "Value: %s", Integer.valueOf(i));
         }
         long boxedTime = System.nanoTime() - start2;
 
-        System.out.println("Native (no boxing): " + nativeTime / 1_000_000 + "ms");
-        System.out.println("Boxed (with boxing): " + boxedTime / 1_000_000 + "ms");
+        System.out.println("\n=== Improved Measurement (with warm-up) ===");
+        System.out.println("Native: " + nativeTime / 1_000_000 + "ms");
+        System.out.println("Boxed: " + boxedTime / 1_000_000 + "ms");
         System.out.println("Overhead: " + ((boxedTime - nativeTime) * 100.0 / nativeTime) + "%");
     }
 
     @Test
-    void measureAutoBoxingOverheadOnFailure() {
-        int iterations = 100_000;  // 예외 발생하므로 횟수 줄임
+    void measureAutoBoxingWithLargeNumbers() {
+        int warmupIterations = 1_000_000;
+        int iterations = 10_000_000;
 
-        // 1. Primitive 타입 오버로딩 (실패 케이스)
+        // Warm-up
+        for (int i = 0; i < warmupIterations; i++) {
+            int large = i + 1000;  // 캐시 범위 벗어남
+            checkArgument(true, "Value: %s", large);
+            checkArgument(true, "Value: %s", Integer.valueOf(large));
+        }
+
+        // Native
         long start1 = System.nanoTime();
         for (int i = 0; i < iterations; i++) {
-            try {
-                checkArgument(false, "Value: %s", i);
-            } catch (IllegalArgumentException e) {
-                // 예외 무시
-            }
+            int large = i + 1000;
+            checkArgument(true, "Value: %s", large);
         }
         long nativeTime = System.nanoTime() - start1;
 
-        // 2. 강제 Boxing (실패 케이스)
+        // Boxed
         long start2 = System.nanoTime();
         for (int i = 0; i < iterations; i++) {
-            try {
-                checkArgument(false, "Value: %s", Integer.valueOf(i));
-            } catch (IllegalArgumentException e) {
-                // 예외 무시
-            }
+            int large = i + 1000;
+            checkArgument(true, "Value: %s", Integer.valueOf(large));
         }
         long boxedTime = System.nanoTime() - start2;
 
-        System.out.println("\n=== Failure Case Performance ===");
-        System.out.println("Native (no boxing): " + nativeTime / 1_000_000 + "ms");
-        System.out.println("Boxed (with boxing): " + boxedTime / 1_000_000 + "ms");
+        System.out.println("\n=== Large Numbers (outside cache) ===");
+        System.out.println("Native: " + nativeTime / 1_000_000 + "ms");
+        System.out.println("Boxed: " + boxedTime / 1_000_000 + "ms");
         System.out.println("Overhead: " + ((boxedTime - nativeTime) * 100.0 / nativeTime) + "%");
     }
 }
