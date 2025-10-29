@@ -1,4 +1,4 @@
-package org.example.immutable;
+package org.example.ImmutableList;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.jupiter.api.Test;
